@@ -6,4 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./createGeminiConversationBody";
+export * from "./geminiConversation";
+export * from "./geminiConversationWithMessages";
+export * from "./geminiError";
+export * from "./geminiMessage";
+export * from "./generateGeminiImageBody";
+export * from "./generateGeminiImageResponse";
 export * from "./healthStatus";
+export * from "./saathiChatRequest";
+export * from "./saathiChatResponse";
+export * from "./sendGeminiMessageBody";

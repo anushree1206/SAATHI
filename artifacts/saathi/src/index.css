@@ -67,73 +67,100 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE / DEFAULT (USING THE SAATHI DARK THEME FOR BOTH AS REQUESTED) */
+/* ============================================================
+   SAATHI DESIGN SYSTEM — DARK INDIGO THEME
+   Background primary:   #0D0B1F  (246 48% 8%)
+   Background secondary: #1A1040  (252 60% 16%)
+   Background tertiary:  #241560  (252 64% 23%)
+   Saffron accent:       #FF6B1A
+   Teal secondary:       #0F8066
+   ============================================================ */
+
 :root {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
-
   --opaque-button-border-intensity: -8;
-
   --elevate-1: rgba(255,255,255, .03);
   --elevate-2: rgba(255,255,255, .08);
 
-  --background: 253 67% 19%;
-  --foreground: 210 40% 98%;
-  --border: 253 30% 30%;
+  /* Background: #0D0B1F — very deep indigo */
+  --background: 246 48% 8%;
+  /* Foreground: #FFFFFF */
+  --foreground: 0 0% 100%;
+  /* Border: rgba(255,255,255,0.08) subtle */
+  --border: 252 40% 22%;
 
-  --card: 253 67% 15%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 253 30% 30%;
+  /* Card: #1A1040 */
+  --card: 252 60% 16%;
+  --card-foreground: 0 0% 100%;
+  --card-border: 252 40% 22%;
 
-  --sidebar: 253 67% 15%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 253 30% 30%;
+  /* Sidebar: #1A1040 */
+  --sidebar: 252 60% 16%;
+  --sidebar-foreground: 221 78% 91%;
+  --sidebar-border: 252 40% 22%;
+  /* Saffron: #FF6B1A = 21 100% 55% */
   --sidebar-primary: 21 100% 55%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 253 30% 25%;
-  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  /* Tertiary: #241560 */
+  --sidebar-accent: 252 64% 23%;
+  --sidebar-accent-foreground: 221 78% 91%;
   --sidebar-ring: 21 100% 55%;
 
-  --popover: 253 67% 15%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 253 30% 30%;
+  /* Popover: #1A1040 */
+  --popover: 252 60% 16%;
+  --popover-foreground: 0 0% 100%;
+  --popover-border: 252 40% 22%;
 
+  /* Primary: saffron #FF6B1A */
   --primary: 21 100% 55%;
-  --primary-foreground: 210 40% 98%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 166 79% 28%;
-  --secondary-foreground: 210 40% 98%;
+  /* Secondary: teal #0F8066 */
+  --secondary: 165 79% 28%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 253 30% 25%;
-  --muted-foreground: 253 20% 70%;
+  /* Muted: #241560 */
+  --muted: 252 64% 23%;
+  /* Muted foreground: #6677AA */
+  --muted-foreground: 225 27% 55%;
 
+  /* Accent: saffron */
   --accent: 21 100% 55%;
-  --accent-foreground: 210 40% 98%;
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
+  /* Destructive: #FF4757 */
+  --destructive: 356 100% 64%;
+  --destructive-foreground: 0 0% 100%;
 
-  --input: 253 30% 30%;
+  /* Input border: #241560 */
+  --input: 252 64% 23%;
   --ring: 21 100% 55%;
+
+  /* Charts using agent colors */
   --chart-1: 21 100% 55%;
-  --chart-2: 166 79% 28%;
-  --chart-3: 253 67% 40%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 340 82% 52%;
+  /* #2E9EFF study blue */
+  --chart-2: 210 100% 59%;
+  /* #00C896 mental teal */
+  --chart-3: 162 100% 39%;
+  /* #A855F7 reality purple */
+  --chart-4: 271 91% 65%;
+  /* #E8447A empathy rose */
+  --chart-5: 340 77% 59%;
 
   --app-font-sans: 'Sora', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .75rem;
-  
-  --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.2);
-  --shadow-xs: 0px 2px 0px 0px rgba(0,0,0,0.2);
-  --shadow-sm: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 1px 2px -1px rgba(0,0,0,0.2);
-  --shadow: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 1px 2px -1px rgba(0,0,0,0.2);
-  --shadow-md: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 2px 4px -1px rgba(0,0,0,0.2);
-  --shadow-lg: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 4px 6px -1px rgba(0,0,0,0.2);
-  --shadow-xl: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 8px 10px -1px rgba(0,0,0,0.2);
-  --shadow-2xl: 0px 2px 0px 0px rgba(0,0,0,0.2);
+
+  --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.4);
+  --shadow-xs: 0px 2px 0px 0px rgba(0,0,0,0.4);
+  --shadow-sm: 0px 2px 4px rgba(0,0,0,0.4);
+  --shadow: 0px 4px 24px rgba(0,0,0,0.4);
+  --shadow-md: 0px 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0px 8px 32px rgba(0,0,0,0.5);
+  --shadow-xl: 0px 16px 48px rgba(0,0,0,0.6);
+  --shadow-2xl: 0px 4px 20px rgba(255,107,26,0.3);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -151,60 +178,88 @@
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* ---- Saathi custom design tokens ---- */
+  --saathi-bg-primary: #0D0B1F;
+  --saathi-bg-secondary: #1A1040;
+  --saathi-bg-tertiary: #241560;
+  --saathi-saffron: #FF6B1A;
+  --saathi-saffron-light: #FF8C42;
+  --saathi-saffron-glow: rgba(255,107,26,0.15);
+  --saathi-teal: #0F8066;
+  --saathi-teal-mint: #00C896;
+  --saathi-text-primary: #FFFFFF;
+  --saathi-text-secondary: #CADCFC;
+  --saathi-text-muted: #6677AA;
+  --saathi-border-default: rgba(255,255,255,0.08);
+  --saathi-border-hover: rgba(255,107,26,0.4);
+  --saathi-border-active: #FF6B1A;
+  /* Agent colors */
+  --agent-empathy: #E8447A;
+  --agent-empathy-bg: rgba(232,68,122,0.12);
+  --agent-study: #2E9EFF;
+  --agent-study-bg: rgba(46,158,255,0.12);
+  --agent-mental: #00C896;
+  --agent-mental-bg: rgba(0,200,150,0.12);
+  --agent-reality: #A855F7;
+  --agent-reality-bg: rgba(168,85,247,0.12);
+  /* Government section colors */
+  --gov-samagra: #3D2B8E;
+  --gov-diksha: #0F5060;
+  --gov-skill: #6B2D00;
 }
 
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
-
   --opaque-button-border-intensity: 9;
-
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 253 67% 19%;
-  --foreground: 210 40% 98%;
-  --border: 253 30% 30%;
+  --background: 246 48% 8%;
+  --foreground: 0 0% 100%;
+  --border: 252 40% 22%;
 
-  --card: 253 67% 15%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 253 30% 30%;
+  --card: 252 60% 16%;
+  --card-foreground: 0 0% 100%;
+  --card-border: 252 40% 22%;
 
-  --sidebar: 253 67% 15%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 253 30% 30%;
+  --sidebar: 252 60% 16%;
+  --sidebar-foreground: 221 78% 91%;
+  --sidebar-border: 252 40% 22%;
   --sidebar-primary: 21 100% 55%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 253 30% 25%;
-  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 252 64% 23%;
+  --sidebar-accent-foreground: 221 78% 91%;
   --sidebar-ring: 21 100% 55%;
 
-  --popover: 253 67% 15%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 253 30% 30%;
+  --popover: 252 60% 16%;
+  --popover-foreground: 0 0% 100%;
+  --popover-border: 252 40% 22%;
 
   --primary: 21 100% 55%;
-  --primary-foreground: 210 40% 98%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 166 79% 28%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 165 79% 28%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 253 30% 25%;
-  --muted-foreground: 253 20% 70%;
+  --muted: 252 64% 23%;
+  --muted-foreground: 225 27% 55%;
 
   --accent: 21 100% 55%;
-  --accent-foreground: 210 40% 98%;
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 356 100% 64%;
+  --destructive-foreground: 0 0% 100%;
 
-  --input: 253 30% 30%;
+  --input: 252 64% 23%;
   --ring: 21 100% 55%;
+
   --chart-1: 21 100% 55%;
-  --chart-2: 166 79% 28%;
-  --chart-3: 253 67% 40%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 340 82% 52%;
+  --chart-2: 210 100% 59%;
+  --chart-3: 162 100% 39%;
+  --chart-4: 271 91% 65%;
+  --chart-5: 340 77% 59%;
 }
 
 @layer base {

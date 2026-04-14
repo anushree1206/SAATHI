@@ -197,11 +197,25 @@ components:
           type: string
       required:
         - message
+    SaathiPipelineStep:
+      type: object
+      properties:
+        agent:
+          type: string
+        insight:
+          type: string
+      required:
+        - agent
+        - insight
     SaathiChatResponse:
       type: object
       properties:
         response:
           type: string
+        pipeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaathiPipelineStep"
       required:
         - response
     GeminiConversation:

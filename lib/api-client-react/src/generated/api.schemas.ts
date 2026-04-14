@@ -14,8 +14,14 @@ export interface SaathiChatRequest {
   language?: string;
 }
 
+export interface SaathiPipelineStep {
+  agent: string;
+  insight: string;
+}
+
 export interface SaathiChatResponse {
   response: string;
+  pipeline?: SaathiPipelineStep[];
 }
 
 export interface GeminiConversation {

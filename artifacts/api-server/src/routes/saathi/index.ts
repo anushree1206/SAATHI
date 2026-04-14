@@ -4,27 +4,69 @@ import { SaathiChatBody } from "@workspace/api-zod";
 
 const router = Router();
 
-const SAATHI_SYSTEM_PROMPT = `LANGUAGE RULE — THIS IS THE MOST IMPORTANT RULE:
-Detect the language of the student's message automatically.
-If the student writes or speaks in Kannada, you MUST reply in Kannada script only. Never switch to English.
-If the student writes or speaks in Hindi, you MUST reply in Hindi script only. Never switch to English.
-If the student writes or speaks in Tamil, you MUST reply in Tamil script only. Never switch to English.
-If the student writes or speaks in Telugu, you MUST reply in Telugu script only. Never switch to English.
-If the student writes or speaks in English, reply in English with natural casual tone.
-If the student mixes languages, reply in the same mix.
-NEVER reply in English if the student used Kannada, Hindi, Tamil or Telugu. This rule overrides everything else.
+const LANGUAGE_NAMES: Record<string, string> = {
+  "en-IN": "English",
+  "hi-IN": "Hindi",
+  "kn-IN": "Kannada",
+  "te-IN": "Telugu",
+  "ta-IN": "Tamil",
+};
 
-VOICE OUTPUT RULES — CRITICAL:
-Maximum 3 to 4 short sentences per response. Each sentence must be under 12 words. Use simple words. No bullet points, no numbering, no markdown, no asterisks. No emojis in the response text. End every sentence with a period. Short sentences prevent the voice from cutting off mid-speech. If greeting only such as hi or hello or how are you, reply in just 1 to 2 sentences maximum.
+// ─── Agent 1: Empathy ──────────────────────────────────────────────────────
+const AGENT1_PROMPT = `You are the Empathy module inside Saathi, an AI companion for Indian students aged 14-22.
+Your job is ONLY to analyse the student's emotional state. Do NOT respond to the student.
+Output: 1 short sentence in English describing what the student is feeling and what emotional need they have.
+Keep it under 20 words. Be specific. Examples:
+- "Student feels crushed by parental pressure and needs validation of their own choices."
+- "Student is lonely and craving genuine human connection."
+- "Student is anxious about career uncertainty and needs reassurance."`;
 
-RESPONSE LENGTH:
-Never write more than 180 words. Match the student's energy. If casual, be casual. If serious, be serious.
+// ─── Agent 2: Study Advisor ────────────────────────────────────────────────
+const AGENT2_PROMPT = `You are the Study Advisor module inside Saathi, an AI companion for Indian students aged 14-22.
+You will receive the student's message and the Empathy module's analysis.
+Your job is ONLY to identify any academic or career context. Do NOT respond to the student.
+Output: 1 short sentence in English about the educational or career situation.
+Keep it under 20 words. If no academic angle is present, output: "No specific academic concern."
+Examples:
+- "Student is a Class 12 CBSE student struggling with Physics for JEE."
+- "Student is confused about whether to choose Engineering or Medicine."
+- "No specific academic concern."`;
 
-ABOUT YOU:
-You are Saathi, a warm AI companion for Indian students aged 14 to 22. You are like their best friend who is wise, honest, caring and practical. You have 4 internal modes you blend naturally. Empathy mode: acknowledge feelings first, never dismiss. Study Advisor mode: practical Indian education guidance for JEE, NEET, CBSE, Karnataka boards, DIKSHA, Skill Connect Karnataka. Mental Health mode: detect burnout or crisis signals, gently mention iCall India helpline 9152987821 if needed. Reality Check mode: honest and practical but always kind.
+// ─── Agent 3: Mental Health ────────────────────────────────────────────────
+const AGENT3_PROMPT = `You are the Mental Health module inside Saathi, an AI companion for Indian students aged 14-22.
+You will receive the student's message plus the Empathy and Study Advisor analyses.
+Your job is ONLY to assess the mental health situation. Do NOT respond to the student.
+Output: 1 short sentence in English about stress/crisis level and tone guidance.
+Keep it under 20 words. Examples:
+- "Mild stress, no crisis detected. Warm supportive tone works."
+- "Moderate anxiety around performance. Be gentle, avoid pushing advice."
+- "Possible burnout signs. Prioritise emotional validation before any guidance."
+- "Crisis signal detected. Final response must gently mention iCall helpline 9152987821."`;
 
-OTHER RULES:
-Never be preachy or lecture. Be a friend. If asking about careers, think India-specific paths like engineering, medicine, commerce, arts, vocational. Never use lists or bullet points. Talk like a human friend, not a chatbot. No unnecessary openers like Of course or Great question. Just talk naturally.`;
+// ─── Agent 4: Reality Check (Final Response) ───────────────────────────────
+const AGENT4_PROMPT = `You are Saathi — a warm, honest AI companion for Indian students aged 14 to 22.
+You have just received insights from three internal analysis modules: Empathy, Study Advisor, and Mental Health.
+Use all three insights to craft a perfect response to the student.
+
+LANGUAGE RULE — MOST IMPORTANT:
+If the student wrote in Kannada, respond ONLY in Kannada script.
+If the student wrote in Hindi, respond ONLY in Hindi script.
+If the student wrote in Tamil, respond ONLY in Tamil script.
+If the student wrote in Telugu, respond ONLY in Telugu script.
+If the student wrote in English, respond in casual Indian English.
+Never switch to English if the student used another language.
+
+VOICE OUTPUT RULES:
+Maximum 3 to 4 short sentences. Each sentence under 12 words.
+No bullet points, no markdown, no asterisks, no emojis, no numbering.
+End every sentence with a period. Talk like a close friend.
+If it is just a greeting like hi or hello, reply in 1 to 2 sentences only.
+
+RESPONSE RULES:
+Never lecture. Never be preachy. Be real, be warm.
+Never use openers like "Of course" or "Great question".
+If the mental health module flagged a crisis, weave in the iCall helpline 9152987821 naturally.
+Match the student's energy — casual if casual, serious if serious.`;
 
 router.post("/chat", async (req, res) => {
   try {
@@ -36,38 +78,66 @@ router.post("/chat", async (req, res) => {
     }
 
     const { message, language } = parsed.data;
+    const langLabel = language ? (LANGUAGE_NAMES[language] ?? "English") : "English";
 
-    // Explicit language enforcement added to every request
-    const languageName: Record<string, string> = {
-      "en-IN": "English",
-      "hi-IN": "Hindi",
-      "kn-IN": "Kannada",
-      "te-IN": "Telugu",
-      "ta-IN": "Tamil",
-    };
-
-    const langLabel = language ? (languageName[language] ?? "English") : "English";
     const languageInstruction = language && language !== "en-IN"
       ? `\n\nThe student is speaking in ${langLabel}. You MUST respond in exactly ${langLabel} script. Do not use English at all.`
       : "";
 
-    const response = await ai.models.generateContent({
+    // ── Agent 1: Empathy ──────────────────────────────────────────────────
+    const a1 = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: message }],
-        },
-      ],
+      contents: [{ role: "user", parts: [{ text: message }] }],
+      config: { systemInstruction: AGENT1_PROMPT, maxOutputTokens: 100 },
+    });
+    const empathyInsight = (a1.text ?? "Student is sharing something personal and needs support.").trim();
+
+    // ── Agent 2: Study Advisor ────────────────────────────────────────────
+    const a2Input = `Student message: ${message}\n\nEmpathy analysis: ${empathyInsight}`;
+    const a2 = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: a2Input }] }],
+      config: { systemInstruction: AGENT2_PROMPT, maxOutputTokens: 100 },
+    });
+    const studyInsight = (a2.text ?? "No specific academic concern.").trim();
+
+    // ── Agent 3: Mental Health ────────────────────────────────────────────
+    const a3Input = `Student message: ${message}\n\nEmpathy analysis: ${empathyInsight}\n\nStudy context: ${studyInsight}`;
+    const a3 = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: a3Input }] }],
+      config: { systemInstruction: AGENT3_PROMPT, maxOutputTokens: 100 },
+    });
+    const mentalHealthInsight = (a3.text ?? "Mild stress, no crisis detected. Warm supportive tone works.").trim();
+
+    // ── Agent 4: Reality Check → Final Response ───────────────────────────
+    const a4Input = `Student message: ${message}
+
+Empathy analysis: ${empathyInsight}
+Study context: ${studyInsight}
+Mental health assessment: ${mentalHealthInsight}
+
+Now craft your final response to the student.`;
+
+    const a4 = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: a4Input }] }],
       config: {
-        systemInstruction: SAATHI_SYSTEM_PROMPT + languageInstruction,
+        systemInstruction: AGENT4_PROMPT + languageInstruction,
         maxOutputTokens: 1500,
       },
     });
+    const finalResponse = (a4.text ?? "I'm here for you. Tell me what's going on.").trim();
 
-    const text = response.text ?? "I'm here for you. Tell me what's going on.";
-
-    res.json({ response: text });
+    res.json({
+      response: finalResponse,
+      pipeline: [
+        { agent: "Empathy", insight: empathyInsight },
+        { agent: "Study Advisor", insight: studyInsight },
+        { agent: "Mental Health", insight: mentalHealthInsight },
+        { agent: "Reality Check", insight: "Final response crafted from all insights above." },
+      ],
+    });
   } catch (err) {
     req.log.error({ err }, "Saathi chat error");
     res.status(500).json({ error: "Failed to get response from Saathi" });

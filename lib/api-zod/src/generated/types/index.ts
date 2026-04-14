@@ -16,4 +16,5 @@ export * from "./generateGeminiImageResponse";
 export * from "./healthStatus";
 export * from "./saathiChatRequest";
 export * from "./saathiChatResponse";
+export * from "./saathiPipelineStep";
 export * from "./sendGeminiMessageBody";

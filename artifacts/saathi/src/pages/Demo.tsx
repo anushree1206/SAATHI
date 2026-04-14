@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, MicOff, Send, Heart, BookOpen, BrainCircuit, ShieldAlert, Loader2, Volume2 } from "lucide-react";
+import { Mic, MicOff, Send, Heart, BookOpen, BrainCircuit, ShieldAlert, Loader2, Volume2, ChevronDown, ChevronUp } from "lucide-react";
 import { useSaathiChat } from "@workspace/api-client-react";
+import type { SaathiPipelineStep } from "@workspace/api-client-react";
 
 const TOPICS = [
   "Parent pressure",
@@ -15,10 +16,10 @@ const TOPICS = [
 ];
 
 const AGENTS = [
-  { id: "empathy", name: "Empathy", icon: Heart, color: "text-rose-400" },
-  { id: "study", name: "Study Advisor", icon: BookOpen, color: "text-blue-400" },
-  { id: "mental", name: "Mental Health", icon: BrainCircuit, color: "text-secondary" },
-  { id: "reality", name: "Reality Check", icon: ShieldAlert, color: "text-primary" }
+  { id: "empathy",  name: "Empathy",       icon: Heart,        color: "text-rose-400",   label: "Reading your mood..." },
+  { id: "study",    name: "Study Advisor", icon: BookOpen,     color: "text-blue-400",   label: "Checking context..." },
+  { id: "mental",   name: "Mental Health", icon: BrainCircuit, color: "text-secondary",  label: "Assessing..." },
+  { id: "reality",  name: "Reality Check", icon: ShieldAlert,  color: "text-primary",    label: "Forming response..." },
 ];
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -29,74 +30,84 @@ const LANGUAGE_NAMES: Record<string, string> = {
   "ta-IN": "Tamil",
 };
 
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  pipeline?: SaathiPipelineStep[];
+};
+
 export default function Demo() {
   const [input, setInput] = useState("");
   const [language, setLanguage] = useState("en-IN");
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
-  const [activeAgent, setActiveAgent] = useState(AGENTS[0]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [pipelineOpen, setPipelineOpen] = useState<Record<number, boolean>>({});
+
+  // Cycling agent index while loading
+  const [loadingAgentIdx, setLoadingAgentIdx] = useState(0);
+  const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const chatMutation = useSaathiChat();
   const recognitionRef = useRef<any>(null);
   const languageRef = useRef(language);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Keep languageRef in sync so callbacks always see latest value
+  useEffect(() => { languageRef.current = language; }, [language]);
+
+  // Scroll to bottom when messages update
   useEffect(() => {
-    languageRef.current = language;
-  }, [language]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, chatMutation.isPending]);
 
-  // Preload voices as early as possible
+  // Start/stop agent cycle animation when loading
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (chatMutation.isPending) {
+      setLoadingAgentIdx(0);
+      loadingIntervalRef.current = setInterval(() => {
+        setLoadingAgentIdx(i => (i + 1) % AGENTS.length);
+      }, 900);
+    } else {
+      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+    }
+    return () => { if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current); };
+  }, [chatMutation.isPending]);
 
+  // Preload voices
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const loadVoices = () => { window.speechSynthesis.getVoices(); };
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-
     return () => {
       window.speechSynthesis.cancel();
       if (recognitionRef.current) recognitionRef.current.abort();
     };
   }, []);
 
-  // Chunk-based speech that survives long text and non-English scripts
+  // Chunk-based speech with sentence splitting (handles Devanagari danda etc.)
   const speakInChunks = (text: string, lang: string) => {
     window.speechSynthesis.cancel();
     setIsSpeaking(true);
-
-    // Split on sentence endings including Devanagari danda (।) and other punctuation
     const sentences: string[] = text.match(/[^।.!?\n]+[।.!?\n]+/g) || [text];
-
     let index = 0;
-
     const speakNext = () => {
-      if (index >= sentences.length) {
-        setIsSpeaking(false);
-        return;
-      }
-
+      if (index >= sentences.length) { setIsSpeaking(false); return; }
       const chunk = sentences[index].trim();
       if (!chunk) { index++; speakNext(); return; }
-
       const utterance = new SpeechSynthesisUtterance(chunk);
       utterance.lang = lang;
       utterance.rate = 0.85;
       utterance.pitch = 1.0;
-
       const voices = window.speechSynthesis.getVoices();
       const exactMatch = voices.find(v => v.lang === lang);
-      const partialMatch = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+      const partialMatch = voices.find(v => v.lang.startsWith(lang.split("-")[0]));
       if (exactMatch) utterance.voice = exactMatch;
       else if (partialMatch) utterance.voice = partialMatch;
-
       utterance.onend = () => { index++; speakNext(); };
       utterance.onerror = () => { index++; speakNext(); };
-
       window.speechSynthesis.speak(utterance);
     };
-
-    // Small delay to ensure voices are loaded
     setTimeout(speakNext, 100);
   };
 
@@ -105,45 +116,29 @@ export default function Demo() {
     setIsSpeaking(false);
   };
 
-  // Always recreate recognition with the current language right before starting
   const toggleRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser. Try Chrome on Android or desktop.");
+      alert("Speech recognition is not supported. Try Chrome on Android or desktop.");
       return;
     }
-
     if (isRecording) {
       if (recognitionRef.current) recognitionRef.current.stop();
       setIsRecording(false);
       return;
     }
-
-    // Stop any ongoing speech
     stopSpeaking();
     setInput("");
-
-    // Create a fresh recognition instance with the current language
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = languageRef.current;
-
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
+      setInput(event.results[0][0].transcript);
       setIsRecording(false);
     };
-
-    recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
-      setIsRecording(false);
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
-
+    recognition.onerror = () => setIsRecording(false);
+    recognition.onend = () => setIsRecording(false);
     recognitionRef.current = recognition;
     recognition.start();
     setIsRecording(true);
@@ -151,23 +146,30 @@ export default function Demo() {
 
   const handleSend = () => {
     if (!input.trim() || chatMutation.isPending) return;
-
     const userMessage = input.trim();
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setInput("");
     stopSpeaking();
 
-    setActiveAgent(AGENTS[Math.floor(Math.random() * AGENTS.length)]);
-
     chatMutation.mutate({ data: { message: userMessage, language } }, {
       onSuccess: (data) => {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: data.response,
+          pipeline: data.pipeline,
+        }]);
         speakInChunks(data.response, language);
       }
     });
   };
 
+  const togglePipeline = (idx: number) => {
+    setPipelineOpen(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
   const showLanguageTip = language !== "en-IN";
+  const loadingAgent = AGENTS[loadingAgentIdx];
+  const LoadingIcon = loadingAgent.icon;
 
   return (
     <div className="flex-1 w-full max-w-4xl mx-auto p-4 md:p-8 flex flex-col h-[calc(100vh-4rem)]">
@@ -190,8 +192,6 @@ export default function Demo() {
               <SelectItem value="ta-IN">Tamil</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Language tip for non-English */}
           <AnimatePresence>
             {showLanguageTip && (
               <motion.div
@@ -199,7 +199,6 @@ export default function Demo() {
                 animate={{ opacity: 1, y: 0, height: "auto" }}
                 exit={{ opacity: 0, y: -6, height: 0 }}
                 className="text-xs text-muted-foreground bg-card border border-border/60 rounded-lg px-3 py-2 max-w-[260px] text-right leading-relaxed"
-                data-testid="language-tip"
               >
                 For best {LANGUAGE_NAMES[language]} voice, open on Android Chrome or install the voice pack:
                 Windows Settings → Time &amp; Language → Speech → Add voices → {LANGUAGE_NAMES[language]}
@@ -211,31 +210,35 @@ export default function Demo() {
 
       <div className="flex-1 bg-card/50 border border-border/50 rounded-2xl p-6 flex flex-col relative overflow-hidden">
 
-        {/* Agent status indicator */}
-        <div className="flex justify-center mb-8 relative z-10">
+        {/* Status bar */}
+        <div className="flex justify-center mb-6 relative z-10">
           <AnimatePresence mode="wait">
             {chatMutation.isPending ? (
               <motion.div
-                key="thinking"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-3 bg-background/80 backdrop-blur-sm border border-primary/30 px-6 py-3 rounded-full"
+                key={`agent-${loadingAgentIdx}`}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                className="flex items-center gap-3 bg-background/80 backdrop-blur-sm border border-primary/30 px-5 py-2.5 rounded-full"
               >
                 <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                  className="w-3 h-3 rounded-full bg-primary"
-                />
-                <span className="text-white font-medium text-sm">Saathi is thinking...</span>
+                  animate={{ scale: [1, 1.25, 1], opacity: [0.8, 1, 0.8] }}
+                  transition={{ repeat: Infinity, duration: 0.9 }}
+                >
+                  <LoadingIcon className={`w-4 h-4 ${loadingAgent.color}`} />
+                </motion.div>
+                <span className="text-white font-medium text-sm">
+                  <span className={`${loadingAgent.color} font-semibold`}>{loadingAgent.name}</span>
+                  {" "}{loadingAgent.label}
+                </span>
               </motion.div>
             ) : isRecording ? (
               <motion.div
                 key="recording"
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-3 bg-background/80 backdrop-blur-sm border border-destructive/40 px-6 py-3 rounded-full"
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex items-center gap-3 bg-background/80 backdrop-blur-sm border border-destructive/40 px-5 py-2.5 rounded-full"
               >
                 <motion.div
                   animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
@@ -247,10 +250,10 @@ export default function Demo() {
             ) : isSpeaking ? (
               <motion.div
                 key="speaking"
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-3 bg-background/80 backdrop-blur-sm border border-secondary/30 px-6 py-3 rounded-full cursor-pointer"
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex items-center gap-3 bg-background/80 backdrop-blur-sm border border-secondary/30 px-5 py-2.5 rounded-full cursor-pointer"
                 onClick={stopSpeaking}
                 title="Tap to stop"
               >
@@ -267,13 +270,21 @@ export default function Demo() {
             ) : (
               <motion.div
                 key="idle"
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-3 bg-background border border-border px-4 py-2 rounded-full"
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex items-center gap-2 bg-background border border-border px-4 py-2 rounded-full"
               >
-                <activeAgent.icon className={`w-5 h-5 ${activeAgent.color}`} />
-                <span className="text-white font-medium text-sm">{activeAgent.name} mode</span>
+                {AGENTS.map((a) => {
+                  const Icon = a.icon;
+                  return (
+                    <div key={a.id} className="flex items-center gap-1.5 opacity-60">
+                      <Icon className={`w-3.5 h-3.5 ${a.color}`} />
+                      <span className="text-white/70 text-xs hidden sm:inline">{a.name}</span>
+                    </div>
+                  );
+                })}
+                <span className="text-white/50 text-xs ml-2">ready</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -290,12 +301,26 @@ export default function Demo() {
               <p className="text-muted-foreground mb-8 text-sm">
                 What's on your mind? You can type, speak, or pick a topic below.
               </p>
+
+              {/* Agent legend */}
+              <div className="flex flex-wrap justify-center gap-3 mb-6">
+                {AGENTS.map((a) => {
+                  const Icon = a.icon;
+                  return (
+                    <div key={a.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border border-border/50">
+                      <Icon className={`w-3.5 h-3.5 ${a.color}`} />
+                      <span className="text-white/70 text-xs">{a.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="flex flex-wrap justify-center gap-2">
                 {TOPICS.map(topic => (
                   <button
                     key={topic}
                     onClick={() => setInput(topic + " ")}
-                    data-testid={`pill-${topic.toLowerCase().replace(/ /g, '-')}`}
+                    data-testid={`pill-${topic.toLowerCase().replace(/ /g, "-")}`}
                     className="px-4 py-2 rounded-full bg-background border border-border hover:border-primary/50 text-sm text-white/80 transition-all hover:scale-105"
                   >
                     {topic}
@@ -304,24 +329,99 @@ export default function Demo() {
               </div>
             </div>
           ) : (
-            messages.map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                    ? 'bg-primary/20 border border-primary/30 text-white rounded-br-sm'
-                    : 'bg-background border border-border text-white rounded-bl-sm'
-                    }`}
-                  data-testid={`message-${msg.role}-${i}`}
+            <>
+              {messages.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex w-full flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
                 >
-                  {msg.content}
-                </div>
-              </motion.div>
-            ))
+                  <div
+                    className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-primary/20 border border-primary/30 text-white rounded-br-sm"
+                        : "bg-background border border-border text-white rounded-bl-sm"
+                    }`}
+                    data-testid={`message-${msg.role}-${i}`}
+                  >
+                    {msg.content}
+                  </div>
+
+                  {/* Pipeline accordion for assistant messages */}
+                  {msg.role === "assistant" && msg.pipeline && msg.pipeline.length > 0 && (
+                    <div className="max-w-[80%] mt-1.5">
+                      <button
+                        onClick={() => togglePipeline(i)}
+                        className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors px-1"
+                      >
+                        {pipelineOpen[i] ? (
+                          <ChevronUp className="w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3" />
+                        )}
+                        How Saathi thought about this
+                      </button>
+                      <AnimatePresence>
+                        {pipelineOpen[i] && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mt-2 space-y-1.5 pl-1">
+                              {msg.pipeline.map((step, si) => {
+                                const agentMeta = AGENTS.find(a => a.name === step.agent) ?? AGENTS[si % AGENTS.length];
+                                const Icon = agentMeta.icon;
+                                return (
+                                  <motion.div
+                                    key={si}
+                                    initial={{ opacity: 0, x: -6 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: si * 0.08 }}
+                                    className="flex items-start gap-2 bg-background/50 border border-border/40 rounded-xl px-3 py-2"
+                                  >
+                                    <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${agentMeta.color}`} />
+                                    <div>
+                                      <span className={`text-xs font-semibold ${agentMeta.color}`}>{step.agent}</span>
+                                      <p className="text-xs text-white/60 mt-0.5 leading-relaxed">{step.insight}</p>
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+
+              {/* Typing indicator while loading */}
+              {chatMutation.isPending && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-start gap-2"
+                >
+                  <div className="bg-background border border-border rounded-2xl rounded-bl-sm px-4 py-3">
+                    <div className="flex gap-1 items-center">
+                      {[0, 1, 2].map(i => (
+                        <motion.div
+                          key={i}
+                          animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
+                          transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+                          className="w-1.5 h-1.5 rounded-full bg-white/50"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              <div ref={messagesEndRef} />
+            </>
           )}
         </div>
 
@@ -345,7 +445,7 @@ export default function Demo() {
               placeholder={`Type in ${LANGUAGE_NAMES[language] ?? "your language"}...`}
               className="resize-none min-h-[56px] py-4 bg-background border-border rounded-2xl pr-14 text-base"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSend();
                 }

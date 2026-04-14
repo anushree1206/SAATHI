@@ -25,6 +25,14 @@ export const SaathiChatBody = zod.object({
 
 export const SaathiChatResponse = zod.object({
   response: zod.string(),
+  pipeline: zod
+    .array(
+      zod.object({
+        agent: zod.string(),
+        insight: zod.string(),
+      }),
+    )
+    .optional(),
 });
 
 /**

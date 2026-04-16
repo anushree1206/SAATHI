@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, MicOff, Send, Heart, BookOpen, BrainCircuit, ShieldAlert, Loader2, Volume2, ChevronDown, ChevronUp } from "lucide-react";
+import { Mic, MicOff, Send, Heart, BookOpen, BrainCircuit, ShieldAlert, Loader2, Volume2, ChevronDown, ChevronUp, VolumeX } from "lucide-react";
 import { useSaathiChat } from "@workspace/api-client-react";
 import type { SaathiPipelineStep } from "@workspace/api-client-react";
 
@@ -43,6 +43,7 @@ export default function Demo() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [pipelineOpen, setPipelineOpen] = useState<Record<number, boolean>>({});
+  const [voiceUnavailable, setVoiceUnavailable] = useState(false);
 
   // Cycling agent index while loading
   const [loadingAgentIdx, setLoadingAgentIdx] = useState(0);
@@ -53,7 +54,10 @@ export default function Demo() {
   const languageRef = useRef(language);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { languageRef.current = language; }, [language]);
+  useEffect(() => {
+    languageRef.current = language;
+    setVoiceUnavailable(false); // reset when user switches language
+  }, [language]);
 
   // Scroll to bottom when messages update
   useEffect(() => {
@@ -85,9 +89,36 @@ export default function Demo() {
     };
   }, []);
 
-  // Chunk-based speech with sentence splitting (handles Devanagari danda etc.)
+  // Find best voice for a language — tries multiple name formats browsers use
+  const findVoice = (lang: string): SpeechSynthesisVoice | null => {
+    const voices = window.speechSynthesis.getVoices();
+    const norm = (s: string) => s.toLowerCase().replace("_", "-");
+    const langNorm = norm(lang);
+    const prefix = lang.split("-")[0].toLowerCase();
+    return (
+      voices.find(v => norm(v.lang) === langNorm) ||        // exact: kn-IN
+      voices.find(v => norm(v.lang) === langNorm.replace("-", "_")) || // kn_IN
+      voices.find(v => norm(v.lang).startsWith(prefix)) ||  // starts with "kn"
+      null
+    );
+  };
+
+  // Chunk-based speech. For non-English, checks if a voice exists first.
+  // If no voice found, shows the "voice unavailable" indicator instead.
   const speakInChunks = (text: string, lang: string) => {
     window.speechSynthesis.cancel();
+
+    const isEnglish = lang.startsWith("en");
+    const voice = findVoice(lang);
+
+    if (!isEnglish && !voice) {
+      // No matching voice installed — don't attempt to speak
+      setVoiceUnavailable(true);
+      setIsSpeaking(false);
+      return;
+    }
+
+    setVoiceUnavailable(false);
     setIsSpeaking(true);
     const sentences: string[] = text.match(/[^।.!?\n]+[।.!?\n]+/g) || [text];
     let index = 0;
@@ -99,11 +130,7 @@ export default function Demo() {
       utterance.lang = lang;
       utterance.rate = 0.85;
       utterance.pitch = 1.0;
-      const voices = window.speechSynthesis.getVoices();
-      const exactMatch = voices.find(v => v.lang === lang);
-      const partialMatch = voices.find(v => v.lang.startsWith(lang.split("-")[0]));
-      if (exactMatch) utterance.voice = exactMatch;
-      else if (partialMatch) utterance.voice = partialMatch;
+      if (voice) utterance.voice = voice;
       utterance.onend = () => { index++; speakNext(); };
       utterance.onerror = () => { index++; speakNext(); };
       window.speechSynthesis.speak(utterance);
@@ -193,15 +220,25 @@ export default function Demo() {
             </SelectContent>
           </Select>
           <AnimatePresence>
-            {showLanguageTip && (
+            {voiceUnavailable && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -6, height: 0 }}
+                className="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-lg px-3 py-2 max-w-[280px] text-right leading-relaxed"
+              >
+                <span className="font-semibold">{LANGUAGE_NAMES[language]} voice not installed.</span> Text response is shown above.
+                <br />To enable voice: <span className="font-medium">Windows Settings → Time &amp; Language → Speech → Manage voices → Add</span>, then restart Chrome.
+              </motion.div>
+            )}
+            {!voiceUnavailable && showLanguageTip && (
               <motion.div
                 initial={{ opacity: 0, y: -6, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: "auto" }}
                 exit={{ opacity: 0, y: -6, height: 0 }}
                 className="text-xs text-muted-foreground bg-card border border-border/60 rounded-lg px-3 py-2 max-w-[260px] text-right leading-relaxed"
               >
-                For best {LANGUAGE_NAMES[language]} voice, open on Android Chrome or install the voice pack:
-                Windows Settings → Time &amp; Language → Speech → Add voices → {LANGUAGE_NAMES[language]}
+                For {LANGUAGE_NAMES[language]} voice output: install the TTS voice pack in Windows Settings → Speech → Manage voices, then restart Chrome.
               </motion.div>
             )}
           </AnimatePresence>

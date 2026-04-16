@@ -44,17 +44,11 @@ Keep it under 20 words. Examples:
 - "Crisis signal detected. Final response must gently mention iCall helpline 9152987821."`;
 
 // ─── Agent 4: Reality Check (Final Response) ───────────────────────────────
-const AGENT4_PROMPT = `You are Saathi — a warm, honest AI companion for Indian students aged 14 to 22.
+// NOTE: Language rule is injected dynamically at the TOP of the prompt so it
+// is always the highest-priority instruction. No auto-detect from input text.
+const AGENT4_BASE = `You are Saathi — a warm, honest AI companion for Indian students aged 14 to 22.
 You have just received insights from three internal analysis modules: Empathy, Study Advisor, and Mental Health.
 Use all three insights to craft a perfect response to the student.
-
-LANGUAGE RULE — MOST IMPORTANT:
-If the student wrote in Kannada, respond ONLY in Kannada script.
-If the student wrote in Hindi, respond ONLY in Hindi script.
-If the student wrote in Tamil, respond ONLY in Tamil script.
-If the student wrote in Telugu, respond ONLY in Telugu script.
-If the student wrote in English, respond in casual Indian English.
-Never switch to English if the student used another language.
 
 VOICE OUTPUT RULES:
 Maximum 3 to 4 short sentences. Each sentence under 12 words.
@@ -80,9 +74,17 @@ router.post("/chat", async (req, res) => {
     const { message, language } = parsed.data;
     const langLabel = language ? (LANGUAGE_NAMES[language] ?? "English") : "English";
 
-    const languageInstruction = language && language !== "en-IN"
-      ? `\n\nThe student is speaking in ${langLabel}. You MUST respond in exactly ${langLabel} script. Do not use English at all.`
-      : "";
+    // Language rule is placed at the VERY TOP of Agent 4's prompt so it wins
+    // over everything. Based on the user's dropdown selection — not input text.
+    const langRule = language && language !== "en-IN"
+      ? `ABSOLUTE LANGUAGE RULE — READ THIS FIRST:
+The user has selected ${langLabel} as their preferred language.
+You MUST write your entire response in ${langLabel} script only.
+Do NOT write a single English word. Do NOT switch to English at all.
+Even if the student's message is in English, you still reply in ${langLabel} script.
+This rule overrides every other instruction.\n\n`
+      : `ABSOLUTE LANGUAGE RULE — READ THIS FIRST:
+Respond in casual conversational Indian English only.\n\n`;
 
     // ── Agent 1: Empathy ──────────────────────────────────────────────────
     const a1 = await ai.models.generateContent({
@@ -123,7 +125,7 @@ Now craft your final response to the student.`;
       model: "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: a4Input }] }],
       config: {
-        systemInstruction: AGENT4_PROMPT + languageInstruction,
+        systemInstruction: langRule + AGENT4_BASE,
         maxOutputTokens: 1500,
       },
     });

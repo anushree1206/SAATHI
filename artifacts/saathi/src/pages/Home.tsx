@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mic, Heart, BookOpen, BrainCircuit, ShieldAlert, GraduationCap, Quote } from "lucide-react";
+import { Mic, Heart, BookOpen, BrainCircuit, ShieldAlert, GraduationCap } from "lucide-react";
 
 export default function Home() {
   return (
@@ -131,30 +131,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-24 bg-card/50">
-        <div className="max-w-6xl mx-auto px-4 md:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-16">Stories from Students</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { text: "When my mock test scores dropped, I was too ashamed to tell my parents. Talking to Saathi calmed me down enough to actually study again.", author: "Class 12 Student", exam: "JEE Aspirant" },
-              { text: "It literally feels like talking to an elder sister who actually listens instead of just telling me to 'focus on studies'.", author: "Pre-University Student", exam: "Bengaluru" },
-              { text: "I use it at 2 AM when my anxiety spikes. Hearing a calm voice tell me it's going to be okay makes all the difference.", author: "1st Year College", exam: "Engineering" }
-            ].map((t, i) => (
-              <Card key={i} className="bg-background border-border">
-                <CardContent className="p-6">
-                  <Quote className="w-8 h-8 text-primary/40 mb-4" />
-                  <p className="text-white mb-6">"{t.text}"</p>
-                  <div>
-                    <p className="font-semibold text-primary">{t.author}</p>
-                    <p className="text-sm text-muted-foreground">{t.exam}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Government Alignment */}
       <section className="py-24 border-t border-border/40">

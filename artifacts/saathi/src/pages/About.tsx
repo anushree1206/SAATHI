@@ -1,4 +1,4 @@
-import { Heart, BrainCircuit, Users, Building, ShieldCheck } from "lucide-react";
+import { Heart, BrainCircuit, Building, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function About() {
@@ -83,25 +83,6 @@ export default function About() {
           </Card>
         </section>
 
-        {/* Team */}
-        <section>
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-            <Users className="w-6 h-6" />
-            The Team
-          </h2>
-          <div className="flex items-center gap-6 bg-card border border-border p-6 rounded-2xl">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold shrink-0">
-              A
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white">Anushree</h3>
-              <p className="text-primary font-medium mb-2">Founder & Developer</p>
-              <p className="text-muted-foreground">
-                Building Saathi to be the friend I wish I had during my own board exams.
-              </p>
-            </div>
-          </div>
-        </section>
 
       </div>
     </div>

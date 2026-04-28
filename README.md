@@ -269,10 +269,118 @@ pnpm build
 cd artifacts/api-server
 pnpm build
 
-# Production deployment
-# Configure environment variables
-# Set DATABASE_URL for production
-# Deploy to your preferred platform
+# Production deployment options:
+
+## Option 1: Vercel (Recommended)
+```bash
+# Deploy frontend to Vercel
+cd artifacts/saathi
+npx vercel
+
+# Deploy backend to Vercel (or Railway/Render)
+cd artifacts/api-server
+npx vercel
+
+# Configure environment variables in Vercel dashboard:
+# - DATABASE_URL (PostgreSQL connection string)
+# - VITE_API_URL (frontend API URL)
+```
+
+## Option 2: Railway
+```bash
+# Deploy backend to Railway
+cd artifacts/api-server
+npx railway deploy
+
+# Configure environment variables in Railway dashboard:
+# - DATABASE_URL
+# - NODE_ENV=production
+```
+
+## Option 3: Render
+```bash
+# Deploy to Render
+cd artifacts/api-server
+npx render deploy
+
+# Configure environment variables in Render dashboard:
+# - DATABASE_URL
+# - PORT=3000
+```
+
+## Option 4: Self-hosted (VPS)
+```bash
+# Install dependencies on server
+sudo apt update && sudo apt install nodejs npm postgresql
+
+# Clone and setup
+git clone https://github.com/anushree1206/SAATHI.git
+cd SAATHI
+pnpm install --production
+pnpm build
+
+# Setup PM2 for process management
+npm install -g pm2
+pm2 start ecosystem.config.js
+
+# Configure nginx reverse proxy (optional)
+# Point domain to your server
+```
+
+### Environment Setup for Production
+```bash
+# Production environment variables
+export NODE_ENV=production
+export PORT=3000
+export DATABASE_URL="postgresql://username:password@your-host:5432/saathi"
+
+# SSL/TLS configuration
+export SSL_CERT_PATH="/path/to/cert.pem"
+export SSL_KEY_PATH="/path/to/key.pem"
+```
+
+### Database Setup for Production
+```bash
+# PostgreSQL setup
+sudo -u postgres createdb saathi
+sudo -u postgres createuser saathi_user
+
+# Grant permissions
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE saathi TO saathi_user;"
+
+# Run migrations
+cd artifacts/api-server
+pnpm run db:migrate
+
+# Seed database (optional)
+pnpm run db:seed
+```
+
+### Quick Deployment
+```bash
+# Make deployment script executable (Linux/Mac)
+chmod +x deploy.sh
+
+# Run deployment script
+./deploy.sh
+
+# For Windows users
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1
+.\deploy.ps1
+```
+
+### Monitoring & Health Checks
+```bash
+# Health check endpoint
+curl https://your-domain.com/api/health
+
+# Check logs (if using PM2)
+pm2 logs saathi-api
+
+# Monitor system resources
+htop
+df -h
+free -m
 ```
 
 ## 🔧 Configuration

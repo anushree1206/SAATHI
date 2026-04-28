@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 import { Mic, MicOff, Send, Heart, BookOpen, BrainCircuit, ShieldAlert, Loader2, Volume2, ChevronDown, ChevronUp, VolumeX } from "lucide-react";
 import { useSaathiChat } from "@workspace/api-client-react";
 import type { SaathiPipelineStep } from "@workspace/api-client-react";
@@ -146,7 +147,11 @@ export default function Demo() {
   const toggleRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition is not supported. Try Chrome on Android or desktop.");
+      toast({
+        title: "Speech recognition unavailable",
+        description: "Use Chrome or Edge and enable microphone access.",
+        variant: "destructive",
+      });
       return;
     }
     if (isRecording) {
@@ -161,19 +166,82 @@ export default function Demo() {
     recognition.interimResults = false;
     recognition.lang = languageRef.current;
     recognition.onresult = (event: any) => {
-      setInput(event.results[0][0].transcript);
+      const rawTranscript = event.results[0]?.[0]?.transcript?.trim();
       setIsRecording(false);
+
+      // Voice input processing
+      let cleanedMessage = rawTranscript;
+
+      if (!cleanedMessage || cleanedMessage.length === 0) {
+        toast({
+          title: "No speech detected",
+          description: "Please try again with a clear, loud voice.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Remove filler words
+      const fillerWords = /\b(um|uh|hmm|er|ah|like|you know|so|well|actually)\b/gi;
+      cleanedMessage = cleanedMessage.replace(fillerWords, '').trim();
+
+      // Remove multiple spaces
+      cleanedMessage = cleanedMessage.replace(/\s+/g, ' ').trim();
+
+      // Check if message is still meaningful after cleaning
+      if (!cleanedMessage || cleanedMessage.length < 2) {
+        toast({
+          title: "Unclear speech",
+          description: "Please speak more clearly or type your message.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setInput(cleanedMessage);
+      // Removed auto-send to allow editing
     };
-    recognition.onerror = () => setIsRecording(false);
+    recognition.onerror = (event: any) => {
+      setIsRecording(false);
+      console.error("Speech recognition error:", event?.error, event);
+      const errorMessage = event?.error || "unknown error";
+      let description = "Please allow microphone access and try again.";
+
+      if (errorMessage === "not-allowed") {
+        description = "Microphone permission denied. Click the lock icon in address bar and allow microphone access.";
+      } else if (errorMessage === "no-speech") {
+        description = "No speech detected. Try speaking louder or closer to microphone.";
+      } else if (errorMessage === "network") {
+        description = "Network error. Check your internet connection.";
+      } else if (errorMessage === "language-not-supported") {
+        description = "Selected language not supported. Try English or check browser language settings.";
+      }
+
+      toast({
+        title: "Speech recognition failed",
+        description,
+        variant: "destructive",
+      });
+    };
     recognition.onend = () => setIsRecording(false);
     recognitionRef.current = recognition;
     recognition.start();
     setIsRecording(true);
   };
 
-  const handleSend = () => {
-    if (!input.trim() || chatMutation.isPending) return;
-    const userMessage = input.trim();
+  const handleSend = (explicitMessage?: string) => {
+    const userMessage = explicitMessage?.trim() ?? input.trim();
+    
+    if (!userMessage || chatMutation.isPending) {
+      if (chatMutation.isPending) {
+        toast({
+          title: "Still generating response",
+          description: "Please wait for the current Saathi reply before sending more.",
+          variant: "default",
+        });
+      }
+      return;
+    }
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setInput("");
     stopSpeaking();
@@ -184,9 +252,18 @@ export default function Demo() {
           role: "assistant",
           content: data.response,
           pipeline: data.pipeline,
-        }]);
+        }] );
         speakInChunks(data.response, language);
-      }
+      },
+      onError: (error: any) => {
+        const errorMsg = error?.response?.data?.error 
+          ?? (error instanceof Error ? error.message : "Check your network connection and try again.");
+        toast({
+          title: "Failed to reach Saathi",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      },
     });
   };
 
@@ -469,36 +546,40 @@ export default function Demo() {
             variant={isRecording ? "destructive" : "secondary"}
             className="h-14 w-14 rounded-full shrink-0 shadow-lg transition-transform hover:scale-105"
             onClick={toggleRecording}
+            disabled={chatMutation.isPending}
             data-testid="btn-mic-toggle"
             title={isRecording ? "Stop recording" : `Speak in ${LANGUAGE_NAMES[language]}`}
           >
             {isRecording ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </Button>
 
-          <div className="flex-1 relative">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={`Type in ${LANGUAGE_NAMES[language] ?? "your language"}...`}
-              className="resize-none min-h-[56px] py-4 bg-background border-border rounded-2xl pr-14 text-base"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              data-testid="input-chat"
-            />
-            <Button
-              size="icon"
-              className="absolute right-2 bottom-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-10 w-10"
-              onClick={handleSend}
-              disabled={!input.trim() || chatMutation.isPending}
-              data-testid="btn-send"
-            >
-              {chatMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-            </Button>
-          </div>
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={`Type in ${LANGUAGE_NAMES[language] ?? "your language"}...`}
+            className="flex-1 resize-none min-h-[56px] py-4 bg-background border-border rounded-2xl text-base"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            data-testid="input-chat"
+          />
+
+          <Button
+            size="icon"
+            className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105"
+            onClick={(e) => {
+              e.preventDefault();
+              console.log('Send button clicked:', { input: input.trim(), isPending: chatMutation.isPending, disabled: !input.trim() || chatMutation.isPending });
+              handleSend();
+            }}
+            disabled={!input.trim() || chatMutation.isPending}
+            data-testid="btn-send"
+          >
+            {chatMutation.isPending ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
+          </Button>
         </div>
       </div>
     </div>

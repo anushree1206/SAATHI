@@ -7,9 +7,14 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@tanstack/react-query": "catalog:"
+    "@tanstack/react-query": "catalog:",
+    "tailwindcss": "^3.4.19"
   },
   "peerDependencies": {
     "react": ">=18"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.10"
   }
 }

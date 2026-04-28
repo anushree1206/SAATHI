@@ -15,11 +15,14 @@
     "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.20.0",
+    "tailwindcss": "^3.4.19",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "^8.18.0",
-    "drizzle-kit": "^0.31.9"
+    "autoprefixer": "^10.5.0",
+    "drizzle-kit": "^0.31.9",
+    "postcss": "^8.5.10"
   }
 }

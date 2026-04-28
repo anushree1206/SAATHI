@@ -1,18 +1,23 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 
-const rawPort = process.env["PORT"];
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+dotenv.config({ path: path.resolve(__dirname, "..", "..", "..", ".env") });
 
-const port = Number(rawPort);
+console.log("Environment variables loaded:", {
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY ? "SET" : "NOT SET",
+  DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT SET",
+});
+
+const { default: app } = await import("./app");
+const { logger } = await import("./lib/logger");
+
+const port = Number(process.env["PORT"] || "3000");
 
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  throw new Error(`Invalid PORT value: "${process.env["PORT"]}"`);
 }
 
 app.listen(port, (err) => {

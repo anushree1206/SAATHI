@@ -6,6 +6,11 @@
     "codegen": "orval --config ./orval.config.ts"
   },
   "devDependencies": {
-    "orval": "^8.5.2"
+    "autoprefixer": "^10.5.0",
+    "orval": "^8.5.2",
+    "postcss": "^8.5.10"
+  },
+  "dependencies": {
+    "tailwindcss": "^3.4.19"
   }
 }

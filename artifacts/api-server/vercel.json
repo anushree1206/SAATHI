@@ -3,7 +3,7 @@
   "name": "saathi-backend",
   "builds": [
     {
-      "src": "package.json",
+      "src": "src/index.ts",
       "use": "@vercel/node"
     }
   ],
@@ -16,8 +16,5 @@
       "src": "/(.*)",
       "dest": "/src/index.ts"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }

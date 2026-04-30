@@ -1,9 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Mic } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Navbar() {
   const [location] = useLocation();
+  const { user, signOut } = useAuth();
 
   return (
     <nav className="w-full border-b border-border/40 backdrop-blur-md bg-background/80 sticky top-0 z-50">
@@ -17,14 +19,35 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-8">
           <Link href="/" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="link-nav-home">Home</Link>
           <Link href="/about" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/about' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="link-nav-about">About</Link>
-          <Link href="/demo" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/demo' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="link-nav-demo">Demo</Link>
+          <Link href="/demo" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/demo' ? 'text-primary' : 'text-muted-foreground'}`} data-testid="link-nav-demo">Chat</Link>
+          {user ? (
+            <Link href="/dashboard" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}>
+              Dashboard
+            </Link>
+          ) : null}
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/demo" data-testid="link-nav-try">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-6 shadow-lg shadow-primary/20">
-              Try Saathi Free
-            </Button>
-          </Link>
+          {user ? (
+            <>
+              <span className="hidden sm:inline text-sm text-muted-foreground">{user.name}</span>
+              <Button onClick={signOut} variant="secondary" className="font-semibold rounded-full px-4">
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="secondary" className="font-semibold rounded-full px-4">
+                  Login
+                </Button>
+              </Link>
+              <Link href="/demo" data-testid="link-nav-try">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-full px-6 shadow-lg shadow-primary/20">
+                  Try Saathi Free
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

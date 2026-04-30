@@ -12,6 +12,7 @@ export interface HealthStatus {
 export interface SaathiChatRequest {
   message: string;
   language?: string;
+  conversationId?: string;
 }
 
 export interface SaathiPipelineStep {

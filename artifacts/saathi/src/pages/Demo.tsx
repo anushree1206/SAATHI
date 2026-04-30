@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { apiGet } from "@/lib/api";
 import { Mic, MicOff, Send, Heart, BookOpen, BrainCircuit, ShieldAlert, Loader2, Volume2, ChevronDown, ChevronUp, VolumeX } from "lucide-react";
 import { useSaathiChat } from "@workspace/api-client-react";
 import type { SaathiPipelineStep } from "@workspace/api-client-react";
@@ -45,11 +48,14 @@ export default function Demo() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [pipelineOpen, setPipelineOpen] = useState<Record<number, boolean>>({});
   const [voiceUnavailable, setVoiceUnavailable] = useState(false);
+  const [conversationId, setConversationId] = useState<string | undefined>();
 
   // Cycling agent index while loading
   const [loadingAgentIdx, setLoadingAgentIdx] = useState(0);
   const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [location] = useLocation();
+  const { user } = useAuth();
   const chatMutation = useSaathiChat();
   const recognitionRef = useRef<any>(null);
   const languageRef = useRef(language);
@@ -89,6 +95,38 @@ export default function Demo() {
       if (recognitionRef.current) recognitionRef.current.abort();
     };
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.split("?")[1] ?? "");
+    setConversationId(params.get("conversationId") ?? undefined);
+  }, [location]);
+
+  useEffect(() => {
+    if (!conversationId || !user) return;
+
+    let active = true;
+    apiGet<{ messages: Array<{ role: "user" | "assistant"; content: string }> }>(`/api/saathi/conversations/${conversationId}`)
+      .then((conversation) => {
+        if (!active) return;
+        setMessages(conversation.messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })));
+      })
+      .catch((error: any) => {
+        if (!active) return;
+        console.error("Failed to load conversation", error);
+        toast({
+          title: "Unable to load conversation",
+          description: error?.data?.error ?? error?.message ?? "Try again.",
+          variant: "destructive",
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [conversationId, user]);
 
   // Find best voice for a language — tries multiple name formats browsers use
   const findVoice = (lang: string): SpeechSynthesisVoice | null => {
@@ -246,7 +284,7 @@ export default function Demo() {
     setInput("");
     stopSpeaking();
 
-    chatMutation.mutate({ data: { message: userMessage, language } }, {
+    chatMutation.mutate({ data: { message: userMessage, language, conversationId } }, {
       onSuccess: (data) => {
         setMessages(prev => [...prev, {
           role: "assistant",

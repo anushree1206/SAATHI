@@ -1,505 +1,237 @@
-# Saathi Voice Hub 🎓
+# SAATHI - Voice Hub for Students
 
 An AI-powered voice companion for Indian students aged 14-22, providing emotional support, academic guidance, and mental health assistance in 5 Indian languages.
 
-## 🚀 Features
+**Live Demo:** https://saathi-2-saathi-mj3q.vercel.app/
 
-### 🧠 AI Intelligence
-- **4-Agent Sequential Pipeline**: Empathy → Study Advisor → Mental Health → Reality Check
-- **Smart Model Fallback**: Automatic switching between multiple Gemini models for maximum availability
-- **Multi-Language Support**: English, Hindi, Kannada, Telugu, Tamil
-- **Context-Aware Responses**: Language selection overrides auto-detection
-- **Crisis Detection**: Automatic iCall helpline integration (9152987821)
+---
 
-### 🎤 Voice Capabilities
-- **Speech Recognition**: Browser Web Speech API with 5 language support
-- **Text-to-Speech**: Natural voice synthesis with chunking
-- **Dynamic Voice Matching**: Automatic language-specific voice selection
-- **Graceful Fallbacks**: Clear instructions for missing voice support
+## Features
 
-### 💬 Chat Interface
-- **Real-time Messaging**: Instant AI responses with typing indicators
-- **Pipeline Visualization**: See all 4 agent analyses in real-time
-- **Agent Badges**: Animated cycling through analysis stages
-- **Responsive Design**: Mobile-first, accessible UI
+### AI Intelligence
+- **4-Agent Pipeline** — Every message passes through Empathy, Study Advisor, Mental Health, and Reality Check agents in a single optimized Gemini API call
+- **4-Model Fallback Chain** — `gemini-2.5-flash-lite` > `gemini-2.0-flash` > `gemini-2.0-flash-lite` > `gemini-1.5-flash` with automatic failover on rate limits (429) and overload (503)
+- **Crisis Detection** — Monitors for distress signals and weaves iCall helpline number (9152987821) into responses
+- **Multilingual Fallback** — If all Gemini models are exhausted, returns a helpful fallback response in the user's selected language
 
-## 🏗️ Architecture
+### Voice Capabilities
+- **Speech Recognition** — Browser Web Speech API with 5 language support
+- **Text-to-Speech** — Chunked synthesis to prevent mid-sentence cutoffs with automatic language-matched voice selection
 
-### Frontend (React + TypeScript)
+### 5-Language Support
+
+| Language | Code  |
+|----------|-------|
+| English  | en-IN |
+| Hindi    | hi-IN |
+| Kannada  | kn-IN |
+| Telugu   | te-IN |
+| Tamil    | ta-IN |
+
+### Auth & Chat History
+- JWT authentication (HMAC-SHA256, no external library)
+- PBKDF2-SHA512 password hashing (120,000 iterations)
+- Persistent conversations with full message history
+- User analytics dashboard
+
+---
+
+## Tech Stack
+
+| Layer    | Technology                                                    |
+|----------|---------------------------------------------------------------|
+| Frontend | React 18, Vite 5, Tailwind CSS v3, Wouter, TanStack Query v5 |
+| UI       | shadcn/ui (55 Radix components), Framer Motion, Lucide icons  |
+| Backend  | Express 5, TypeScript, ESM (`"type": "module"`)               |
+| Database | MongoDB (Atlas or local via mongodb-memory-server)            |
+| AI       | Google Gemini (`@google/genai`) with 4-model fallback         |
+| Logging  | Pino + pino-http structured JSON logging                      |
+| Voice    | Web Speech API (SpeechRecognition + SpeechSynthesis)          |
+
+---
+
+## Project Structure
+
 ```
-artifacts/saathi/
-├── src/
-│   ├── pages/
-│   │   ├── Demo.tsx          # Main chat interface
-│   │   ├── Landing.tsx        # Landing page
-│   │   └── About.tsx          # About page
-│   ├── components/
-│   │   ├── ui/               # shadcn/ui components
-│   │   └── ...             # Custom components
-│   └── lib/
-│       └── utils.ts           # Helper functions
-├── public/
-└── package.json
-```
-
-**Tech Stack:**
-- React 18 with TypeScript
-- Vite (development & build)
-- Wouter (client-side routing)
-- Framer Motion (animations)
-- Tailwind CSS + shadcn/ui
-- Lucide React (icons)
-
-### Backend (Node.js + Express)
-```
-artifacts/api-server/
-├── src/
+SAATHI/
+├── backend/                  # Express API server (port 3000)
+│   ├── index.ts              # Entry point — loads .env, starts server
+│   ├── app.ts                # Express setup, CORS, middleware
+│   ├── config.ts             # Environment variable exports
 │   ├── routes/
-│   │   └── saathi/
-│   │       └── index.ts    # Main API endpoint
-│   └── index.ts              # Server entry point
-├── package.json
-└── tsconfig.json
+│   │   ├── index.ts          # Mounts /auth, /saathi, /healthz routers
+│   │   ├── auth.ts           # POST /api/auth/signup, /login, GET /me
+│   │   ├── chat.ts           # POST /api/saathi/chat (core feature)
+│   │   └── health.ts         # GET /api/healthz
+│   ├── agents/
+│   │   ├── empathy.ts        # Empathy agent prompt spec
+│   │   ├── study.ts          # Study Advisor prompt spec
+│   │   ├── mental.ts         # Mental Health prompt spec
+│   │   └── reality.ts        # Reality Check prompt spec
+│   ├── lib/
+│   │   ├── gemini.ts         # Gemini client + 4-model fallback chain
+│   │   ├── crisis.ts         # iCall helpline, crisis detection, fallbacks
+│   │   ├── mongo.ts          # MongoDB connection + all CRUD helpers
+│   │   ├── jwt.ts            # Custom JWT sign/verify (HMAC-SHA256)
+│   │   ├── password.ts       # PBKDF2-SHA512 hashing
+│   │   └── logger.ts         # Pino logger
+│   ├── middlewares/
+│   │   └── auth.ts           # requireAuth JWT middleware
+│   ├── db/
+│   │   └── schema.ts         # MongoDB document TypeScript types
+│   └── package.json
+│
+├── frontend/                 # React SPA (port 5173)
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Home.tsx      # Landing page
+│   │   │   ├── Chat.tsx      # Main chat interface
+│   │   │   ├── Login.tsx     # Login form
+│   │   │   ├── Signup.tsx    # Signup form
+│   │   │   ├── Dashboard.tsx # User analytics
+│   │   │   └── About.tsx     # About page
+│   │   ├── components/
+│   │   │   ├── VoiceButton.tsx
+│   │   │   ├── ChatMessage.tsx
+│   │   │   ├── AgentPipeline.tsx
+│   │   │   ├── LanguageSelect.tsx
+│   │   │   ├── layout/       # Navbar, Footer
+│   │   │   └── ui/           # 55 shadcn components
+│   │   ├── lib/
+│   │   │   ├── api.ts        # apiFetch, apiGet/apiPost, useSaathiChat hook
+│   │   │   ├── auth.ts       # localStorage auth session management
+│   │   │   ├── speech.ts     # speakInChunks, findVoice, stopSpeaking
+│   │   │   └── utils.ts      # cn() helper
+│   │   ├── hooks/            # useAuth, use-toast, use-mobile
+│   │   ├── App.tsx           # Wouter router
+│   │   └── main.tsx          # Mount + auth token setup
+│   ├── vite.config.ts        # Proxies /api -> localhost:3000
+│   ├── tailwind.config.ts
+│   ├── postcss.config.cjs
+│   └── package.json
+│
+└── .env                      # Environment variables (not committed)
 ```
 
-**Tech Stack:**
-- Node.js + Express 5
-- TypeScript (fully typed)
-- Pino (structured logging)
-- esbuild (fast bundling)
+---
 
-### AI Integration
-```
-lib/integrations-gemini-ai/
-├── src/
-│   ├── client.ts          # Gemini client wrapper
-│   ├── index.ts           # Exports
-│   └── image.ts           # Image generation
-└── package.json
-```
-
-**Features:**
-- Replit Gemini AI integration
-- Smart fallback chain (4 models)
-- Automatic retry logic
-- Rate limit handling
-
-### Database (PostgreSQL + Drizzle)
-```
-lib/db/
-├── schema.ts           # Database schema
-├── index.ts           # Database client
-└── migrations/         # Schema migrations
-```
-
-## 🤖 AI Model System
-
-### Smart Fallback Chain
-The system automatically tries multiple Gemini models in order of preference:
-
-1. **gemini-2.5-flash-lite** (20 RPM free tier)
-2. **gemini-2.0-flash** (15 RPM free tier, separate quota)
-3. **gemini-2.0-flash-lite** (30 RPM free tier, separate quota)
-4. **gemini-1.5-flash** (15 RPM free tier, separate quota)
-
-### Error Handling
-- **Rate Limit (429)**: Instant fallback to next model
-- **Overload (503)**: Quick retry (800ms) once
-- **All Models Exhausted**: Friendly 429 response
-- **Graceful Degradation**: No crashes, clear error messages
-
-### 4-Agent Pipeline
-Each message passes through a sequential analysis:
-
-1. **Empathy Agent**: Analyzes emotional state and needs
-2. **Study Advisor**: Identifies academic/career context  
-3. **Mental Health**: Assesses stress levels and crisis signals
-4. **Reality Check**: Synthesizes final response
-
-**Optimization**: Single API call with combined prompt (3-4x faster than sequential)
-
-## 🌐 Language Support
-
-| Language | Code | Voice Support | Script Support |
-|-----------|--------|---------------|----------------|
-| English   | en-IN  | ✅           | ✅             |
-| Hindi     | hi-IN  | ✅           | ✅             |
-| Kannada   | kn-IN  | ✅           | ✅             |
-| Telugu    | te-IN  | ✅           | ✅             |
-| Tamil     | ta-IN  | ✅           | ✅             |
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
-- npm or pnpm
-- PostgreSQL database (for production)
+- npm
 
-### Installation
+### 1. Clone & Install
+
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd Saathi-Voice-Hub
+git clone https://github.com/kumardipesh7/SAATHI.git
+cd SAATHI
 
-# Install dependencies
-pnpm install
+# Install backend dependencies
+cd backend && npm install
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
+# Install frontend dependencies
+cd ../frontend && npm install
 ```
 
-### Development
-```bash
-# Start API server (port 3000)
-cd artifacts/api-server
-pnpm dev
+### 2. Configure Environment
 
-# Start frontend (port 5173)
-cd artifacts/saathi  
-pnpm dev
+Create a `.env` file in the project root:
 
-# Access the application
-# Frontend: http://localhost:5173
-# API: http://localhost:3000
+```env
+GEMINI_API_KEY=your_gemini_api_key
+MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net/saathi?retryWrites=true&w=majority
+MONGO_DB_NAME=saathi
+PORT=3000
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
-### Environment Variables
+> **No MongoDB?** If `MONGO_URL` is not set or the Atlas cluster is unreachable, the backend automatically starts a local MongoDB instance using `mongodb-memory-server` with persistent storage in `.mongodb-data/`.
+
+### 3. Run
+
 ```bash
-# API Configuration
-VITE_API_URL=http://localhost:3000
+# Terminal 1 — Backend (port 3000)
+cd backend
+npm run dev
 
-# Database (for production)
-DATABASE_URL=postgresql://user:password@localhost:5432/saathi
-
-# Gemini AI (handled by Replit integration)
-GEMINI_API_KEY=your_api_key_here
+# Terminal 2 — Frontend (port 5173)
+cd frontend
+npm run dev
 ```
 
-## 📱 API Endpoints
+Open http://localhost:5173 in your browser.
 
-### POST /api/saathi/chat
-Main chat endpoint for AI responses.
+---
 
-**Request:**
+## API Endpoints
+
+| Method | Path                | Auth | Description                    |
+|--------|---------------------|------|--------------------------------|
+| GET    | `/api/healthz`      | No   | Health check                   |
+| POST   | `/api/auth/signup`   | No   | Create account (name, email, password) |
+| POST   | `/api/auth/login`    | No   | Login (email, password) → JWT  |
+| GET    | `/api/auth/me`       | Yes  | Get current user profile       |
+| POST   | `/api/saathi/chat`   | Yes  | Send message to AI pipeline    |
+
+### Chat Request/Response
+
 ```json
+// POST /api/saathi/chat
+// Headers: Authorization: Bearer <jwt_token>
+
+// Request
 {
-  "message": "Hi, I'm feeling stressed about exams",
-  "language": "en-IN"
+  "message": "I'm stressed about exams",
+  "language": "en-IN",
+  "conversationId": "optional-existing-id"
 }
-```
 
-**Response:**
-```json
+// Response
 {
-  "response": "I understand exam stress can be overwhelming. Take deep breaths and break study into smaller chunks.",
+  "response": "I understand exam stress can be overwhelming...",
+  "conversationId": "6a2eded8a2848ad75df761ee",
   "pipeline": [
-    {
-      "agent": "Empathy",
-      "insight": "Student experiencing exam-related anxiety and needs reassurance."
-    },
-    {
-      "agent": "Study Advisor", 
-      "insight": "Concern about exam preparation and study habits."
-    },
-    {
-      "agent": "Mental Health",
-      "insight": "Moderate stress levels, no crisis detected. Recommend calming techniques."
-    },
-    {
-      "agent": "Reality Check",
-      "insight": "Final response crafted from all insights above."
-    }
+    { "agent": "Empathy", "insight": "Student experiencing exam-related anxiety." },
+    { "agent": "Study Advisor", "insight": "Concern about exam preparation." },
+    { "agent": "Mental Health", "insight": "Moderate stress, no crisis detected." },
+    { "agent": "Reality Check", "insight": "Final response crafted from all insights." }
   ]
 }
 ```
 
-**Error Responses:**
-```json
-// Rate limit (all models busy)
-{
-  "error": "All AI models are currently busy. Please wait a minute and try again."
-}
+---
 
-// Generic errors
-{
-  "error": "Failed to get response from Saathi"
-}
-```
-
-## 🛠️ Development
-
-### Project Structure
-This is a monorepo using pnpm workspaces:
+## How the AI Pipeline Works
 
 ```
-Saathi-Voice-Hub/
-├── artifacts/
-│   ├── saathi/           # React frontend
-│   └── api-server/       # Express backend
-├── lib/
-│   ├── api-spec/          # OpenAPI specification
-│   ├── api-client-react/  # Generated React hooks
-│   ├── api-zod/           # Generated validation
-│   ├── db/                # Database schema & client
-│   └── integrations-gemini-ai/  # AI integration
-├── .env                  # Environment variables
-└── package.json            # Root workspace config
+User Message
+    │
+    ▼
+┌─────────────────────────────────────────────┐
+│  Single Gemini API Call (combined prompt)    │
+│                                             │
+│  1. Empathy Agent    → emotional analysis   │
+│  2. Study Advisor    → academic context     │
+│  3. Mental Health    → stress + crisis check │
+│  4. Reality Check    → final synthesis      │
+└─────────────────────────────────────────────┘
+    │
+    ▼
+Structured JSON Response + Pipeline Visualization
 ```
 
-### Code Generation
-```bash
-# Generate API client from OpenAPI spec
-pnpm run generate:client
-
-# Database migrations
-pnpm run db:migrate
-
-# Type checking
-pnpm run type-check
-```
-
-### Build & Deploy
-```bash
-# Build frontend
-cd artifacts/saathi
-pnpm build
-
-# Build backend
-cd artifacts/api-server
-pnpm build
-
-# Production deployment options:
-
-## Option 1: Vercel (Recommended)
-```bash
-# Deploy frontend to Vercel
-cd artifacts/saathi
-npx vercel
-
-# Deploy backend to Vercel (or Railway/Render)
-cd artifacts/api-server
-npx vercel
-
-# Configure environment variables in Vercel dashboard:
-# - DATABASE_URL (PostgreSQL connection string)
-# - VITE_API_URL (frontend API URL)
-```
-
-## Option 2: Railway
-```bash
-# Deploy backend to Railway
-cd artifacts/api-server
-npx railway deploy
-
-# Configure environment variables in Railway dashboard:
-# - DATABASE_URL
-# - NODE_ENV=production
-```
-
-## Option 3: Render
-```bash
-# Deploy to Render
-cd artifacts/api-server
-npx render deploy
-
-# Configure environment variables in Render dashboard:
-# - DATABASE_URL
-# - PORT=3000
-```
-
-## Option 4: Self-hosted (VPS)
-```bash
-# Install dependencies on server
-sudo apt update && sudo apt install nodejs npm postgresql
-
-# Clone and setup
-git clone https://github.com/anushree1206/SAATHI.git
-cd SAATHI
-pnpm install --production
-pnpm build
-
-# Setup PM2 for process management
-npm install -g pm2
-pm2 start ecosystem.config.js
-
-# Configure nginx reverse proxy (optional)
-# Point domain to your server
-```
-
-### Environment Setup for Production
-```bash
-# Production environment variables
-export NODE_ENV=production
-export PORT=3000
-export DATABASE_URL="postgresql://username:password@your-host:5432/saathi"
-
-# SSL/TLS configuration
-export SSL_CERT_PATH="/path/to/cert.pem"
-export SSL_KEY_PATH="/path/to/key.pem"
-```
-
-### Database Setup for Production
-```bash
-# PostgreSQL setup
-sudo -u postgres createdb saathi
-sudo -u postgres createuser saathi_user
-
-# Grant permissions
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE saathi TO saathi_user;"
-
-# Run migrations
-cd artifacts/api-server
-pnpm run db:migrate
-
-# Seed database (optional)
-pnpm run db:seed
-```
-
-### Quick Deployment
-```bash
-# Make deployment script executable (Linux/Mac)
-chmod +x deploy.sh
-
-# Run deployment script
-./deploy.sh
-
-# For Windows users
-powershell -ExecutionPolicy Bypass -File .\deploy.ps1
-.\deploy.ps1
-```
-
-### Monitoring & Health Checks
-```bash
-# Health check endpoint
-curl https://your-domain.com/api/health
-
-# Check logs (if using PM2)
-pm2 logs saathi-api
-
-# Monitor system resources
-htop
-df -h
-free -m
-```
-
-## 🔧 Configuration
-
-### Frontend Configuration
-- **Vite**: Development server with HMR
-- **TypeScript**: Strict type checking
-- **ESLint**: Code quality enforcement
-- **Prettier**: Code formatting
-
-### Backend Configuration  
-- **Express**: RESTful API server
-- **Pino**: Structured JSON logging
-- **TypeScript**: End-to-end type safety
-- **CORS**: Cross-origin resource sharing
-
-### AI Configuration
-- **Models**: Smart fallback chain for maximum uptime
-- **Retries**: Exponential backoff with intelligent error detection
-- **Rate Limits**: Automatic handling per model
-- **Response Format**: Structured JSON with pipeline visualization
-
-## 🎯 Key Features Explained
-
-### Voice Recognition
-- Uses browser's native Web Speech API
-- Supports 5 Indian languages with proper language codes
-- Automatic language detection from user selection
-- Graceful fallback when voice recognition unavailable
-
-### Text-to-Speech
-- Chunked processing to prevent mid-sentence cutoffs
-- Language-specific voice selection
-- Natural speech synthesis with appropriate pacing
-- Visual feedback for speaking status
-
-### Crisis Detection
-- Automated monitoring for distress keywords
-- Seamless iCall helpline integration (9152987821)
-- Context-aware crisis response weaving
-- Mental health professional escalation paths
-
-### Pipeline Visualization
-- Real-time display of all 4 agent analyses
-- Animated transitions between agent states
-- Expandable/collapsible pipeline details
-- Color-coded agent insights
-
-## 🌟 Production Considerations
-
-### Performance
-- **Single API Call**: Optimized from 4 sequential calls to 1 combined call
-- **Smart Caching**: Model response caching for repeated queries
-- **Connection Pooling**: Efficient API resource management
-- **Error Boundaries**: Graceful degradation handling
-
-### Security
-- **Input Validation**: Zod schema validation on all endpoints
-- **Rate Limiting**: Built-in protection against abuse
-- **CORS Configuration**: Secure cross-origin requests
-- **Environment Variables**: Sensitive data protection
-
-### Monitoring
-- **Structured Logging**: Pino JSON logs for production debugging
-- **Error Tracking**: Comprehensive error categorization
-- **Performance Metrics**: Response time and success rate monitoring
-- **Health Checks**: Automated system status verification
-
-## 🤝 Contributing
-
-We welcome contributions to make Saathi better for Indian students!
-
-### Development Setup
-```bash
-# Fork the repository
-git clone <your-fork-url>
-cd Saathi-Voice-Hub
-pnpm install
-
-# Create feature branch
-git checkout -b feature/your-feature-name
-
-# Make your changes
-# Follow existing code patterns and conventions
-
-# Run tests
-pnpm test
-
-# Submit pull request
-# Ensure all tests pass and code is properly formatted
-```
-
-### Code Standards
-- **TypeScript**: Strict typing for all new code
-- **React**: Functional components with hooks
-- **CSS**: Tailwind utility classes, custom CSS variables
-- **API**: RESTful design with proper error handling
-- **Testing**: Unit tests for new features
-
-### Issue Reporting
-- **Bug Reports**: Use GitHub Issues with detailed reproduction steps
-- **Feature Requests**: Open an issue with the "enhancement" label
-- **Security**: Report security concerns privately
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- **Gemini AI**: Google's powerful language model for intelligent responses
-- **Web Speech API**: Browser-native voice recognition and synthesis
-- **React Community**: For the amazing ecosystem of components and tools
-- **OpenAPI**: For standardized API specification generation
-- **Indian Student Community**: For inspiration and feedback in building this tool
+- All 4 agents run in a **single API call** (not 4 sequential calls)
+- If the primary model hits a rate limit, it automatically falls back to the next model
+- Crisis keywords trigger automatic iCall helpline (9152987821) integration
+- If all models fail, a multilingual fallback response is returned
 
 ---
 
-Live Demo:
-https://saathi-2-saathi-mj3q.vercel.app/
+## License
 
-**Built with ❤️ for Indian students everywhere** 🇮🇳
+MIT
+
+---
+
+**Built for Indian students everywhere**
